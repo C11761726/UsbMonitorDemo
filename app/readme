@@ -1,0 +1,65 @@
+2019.9.25
+如何使用jar文件
+1、在AndroidManifest.xml中添加两个receiver
+<receiver android:name="com.example.usbmonitor.USBdiskReceiver">
+    <intent-filter>
+        <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+        <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+        <action android:name="android.os.storage.action.VOLUME_STATE_CHANGED" />
+    </intent-filter>
+</receiver>
+<receiver android:name="com.example.usbmonitor.USBdiskReceiver51">
+    <intent-filter android:priority="1000">
+        <action android:name="android.intent.action.MEDIA_MOUNTED" />
+        <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
+        <action android:name="android.intent.action.MEDIA_REMOVED" />
+        <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+        <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+
+        <data android:scheme="file" />
+    </intent-filter>
+</receiver>
+2、对于android 6.0 还需添加权限
+<uses-permission android:name="android.permission.WRITE_MEDIA_STORAGE" />
+这是系统权限，需要有系统签名，一个给应用添加系统签名，一个是直接修改系统源码，把权限放开
+具体参考：https://blog.csdn.net/cau_eric/article/details/100932028
+3、在调用的activity中声明本地广播，可以获取到u盘插拔的消息和u盘加载的路径
+//==============声明变量=====================>>
+private LocalBroadcastManager localBroadcastManager;
+private IntentFilter intentFilter;
+private LocalReceiver localReceiver;
+//===============注册/反注册====================>>
+@Override
+protected void onResume() {
+    super.onResume();
+
+    localBroadcastManager = LocalBroadcastManager.getInstance(this);
+    intentFilter = new IntentFilter();
+    intentFilter.addAction(Constant.ACTION_USB_RECEIVER);
+    localReceiver = new LocalReceiver();
+    //注册本地接收器
+    localBroadcastManager.registerReceiver(localReceiver, intentFilter);
+}
+
+@Override
+protected void onPause() {
+    super.onPause();
+
+    localBroadcastManager.unregisterReceiver(localReceiver);
+}
+//===================实现====================================>>
+private class LocalReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String data = intent.getStringExtra("data");
+        Message msg = Message.obtain();
+        Log.d(TAG, "收到本地广播==>>" + data);
+        if (data.equals("USB_MOUNT")) {
+            //msg.what = MyHandler.USB_MOUNT;
+            msg.obj = intent.getStringExtra("path");
+            Log.d(TAG, "收到本地广播=path=>>" +  msg.obj );
+        }
+        //mHandler.sendMessage(msg);
+    }
+}
+//===============完======================>>>
